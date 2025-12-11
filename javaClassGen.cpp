@@ -363,7 +363,7 @@ string setterString(Field f)
     return fstring;
 }
 
-void writeFile(JavaClass jc)
+void writeFile(JavaClass jc,string inFileName)
 {
     string filename = jc.header.name;
     ofstream outfile(filename + ".java");
@@ -454,7 +454,7 @@ void writeFile(JavaClass jc)
 
     outfile.close();
 
-    cout << "successfully created [" << filename << ".java] from ["<< filename <<".txt]" << endl;
+    cout << "successfully created [" << filename << ".java] from ["<< inFileName <<".txt]" << endl;
 }
 
 
@@ -510,7 +510,7 @@ void readfile(string filename)
         lineCount++;
     }
     
-    writeFile(package);
+    writeFile(package,filename);
 }
 
 int main(int argc, char** argv)

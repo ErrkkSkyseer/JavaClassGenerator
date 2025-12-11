@@ -1,37 +1,45 @@
-public abstract class Sample extends Parent implements ISampleInterface1, ISampleInterface2 
+public abstract class Sample extends Parent implements ISampleInterface1, ISampleInterface2
 {
-    public Type publicField;
+	public Type publicField;
 
-    protected Type protectedField;
+	protected Type protectedField;
 
-    private Type privateField1;
-    private Type privateField2;
+	private Type m_privateField1;
+	private Type m_privateField2;
 
-    public Sample(P param1, P param2) 
-    {
+	public Sample(P param1, P param2)
+	{
+		return null;
+	}
 
-    }
+	public Type getPublicField()
+	{
+		return null;
+	}
 
-    public Type getPublicField() {return publicField};
-    
-    public void setPublicField(Type value) {publicField = value};
+	public void setPublicField(Type value)
+	{
+		publicField = value;
+	}
 
-    public Type publicFunction(P param1, P param2)
-    {
-        return null;
-    }
+	private Type privateFunction2(P param1, P param2)
+	{
+		return null;
+	}
 
-    protected Type protectedFunction(P param1, P param2)
-    {
-        return null
-    }
+	private void privateFunction2()
+	{
+		
+	}
 
-    private Type privateFunction1(P param1, P param2)
-    {
-        return null;
-    }
-    private void privateFunction2()
-    {
-        
-    }
+	protected Type protectedFunction(P param1, P param2)
+	{
+		return null;
+	}
+
+	public Type publicFunction(P param1, P param2)
+	{
+		return null;
+	}
+
 }
