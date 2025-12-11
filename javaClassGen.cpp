@@ -437,7 +437,6 @@ void writeFile(JavaClass jc)
         //getter setter
     for (Field f : jc.fields)
     {
-        cout << f.name << " " << f.isGetter << "|" << f.isSetter << endl;
         if (f.isGetter) 
             outfile << getterString(f) << "\n\n";
         if (f.isSetter) 
