@@ -3,7 +3,7 @@ public abstract class Sample extends Parent implements ISampleInterface1, ISampl
 #protectedField:Type
 -privateField1:Type
 -privateField2:Type
-+Sample(param1:P,param2:P):Type
++Sample(param1:P,param2:P):
 +publicFunction(param1:P,param2:P):Type
 #protectedFunction(param1:P,param2:P):Type
 -privateFunction2(param1:P,param2:P):Type

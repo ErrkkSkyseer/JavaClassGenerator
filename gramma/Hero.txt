@@ -1,0 +1,11 @@
+Hero
+-m_hp:int|get,set
+-m_hpMax:int|get
+-m_mp:int|get,set
+-m_mpMax:int|get
+-m_dam:int
++life:int
+-calculateDamage():void
++attack():int
++takeDamage(dam:int):void
++die():void
