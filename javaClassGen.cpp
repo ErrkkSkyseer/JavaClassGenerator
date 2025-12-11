@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cstring>
 #include <algorithm>
+#include <set>
 
 using namespace std;
 
@@ -14,13 +15,18 @@ enum Access
     public_,protected_,private_
 };
 
+set<string> headerKeywords = 
+{
+    "public","private","protected","abstract","interface","implements","extends"
+};
+
 struct Field
 {
     Access acc;
     string name;
     string type;
-
-    
+    bool get = false;
+    bool set = false;
 };
 
 struct Param
@@ -29,19 +35,24 @@ struct Param
     string type;
 };
 
+
 struct Function
 {
     Access acc;
     string name;
     string type;
     vector<Param> params;
-    bool get = false;
-    bool set = false;
+};
+
+struct Header
+{
+    string name;
+    string declearation;
 };
 
 struct JavaClass
 {
-    string header;
+    Header header;
     vector<Field> fields;
     vector<Function> functions;
 };
@@ -137,6 +148,43 @@ string tocaMel(string s)
     return s;
 }
 
+Header parseHeader(string line)
+{
+    Header h; 
+
+    // find whitespace
+    if (line.find(" ") == string::npos)
+    {
+        // not found -> empty or name only
+        // build string "public [className]"
+        string className = line;
+        stringstream ss;
+        ss << "public class " << className;
+
+        h.name = className;
+        h.declearation = ss.str();
+    }
+    else
+    {
+        // found -> probably full declearation
+
+        // slice line into tokens by whitespace and look for first of non-keywords token.
+        auto tokens = slice(line,' ');
+        for (auto t : tokens)
+        {
+            if (headerKeywords.find(t) != headerKeywords.end())
+            {
+                h.name = t;
+                break;
+            }
+        }
+
+        h.declearation = line;
+    }
+
+    return h;
+}
+
 Field makeField(Access acc, string type, string name)
 {
     Field f;
@@ -161,7 +209,11 @@ Field parseField(string line)
     size_t typeSize = bar == string::npos? line.size() - typeStart : bar - typeStart;
     string type = line.substr(typeStart,typeSize);
 
-    return makeField(acc,type,name);
+    size_t getSetSearchSize = line.size() - bar; 
+    bool haveGet = line.find("get",bar+1);
+    bool haveSet = line.find("set",bar+1);
+
+    return makeField(acc,type,name,haveGet,haveSet);
 }
 
 Param makeParam(string type, string name)
@@ -188,39 +240,6 @@ vector<Param> parseParams(string line)
         parsed.push_back(makeParam(type,name));
     }
     return parsed;
-}
-
-Function getter(Field fi)
-{
-    Function f;
-    f.acc = public_;
-
-    stringstream ss;
-    ss << "get" << toPascal(removem_(fi.name));
-    f.name = ss.str();
-
-    f.type = fi.type;
-
-    f.get = true;
-    f.set = false;
-    return f;
-}
-
-Function setter(Field fi)
-{
-    Function f;
-    f.acc = public_;
-
-    stringstream ss;
-    ss << "set" << toPascal(removem_(fi.name));
-    f.name = ss.str();
-
-    f.type = "void";
-    f.params.push_back(makeParam(fi.type,"value"));
-
-    f.get = false;
-    f.set = true;
-    return f;
 }
 
 Function makeFunction(Access acc, string type, string name, vector<Param> params)
@@ -288,33 +307,7 @@ string paramString(Param p)
 string functionBody (Function f)
 {
     stringstream ss;
-    if (f.get == true)
-    {
-        string field = f.name;
-        size_t size = field.size() - 1;
-        field[1] = 'm';
-        field[2] = '_';
-        field[3] = tolower(field[3]);
-        field = field.substr(1,size);
-        
-        ss << "return " << field <<";";
-    }
-    else if (f.set == true)
-    {
-        string field = f.name;
-        size_t size = field.size() - 1;
-        field[1] = 'm';
-        field[2] = '_';
-        field[3] = tolower(field[3]);
-        field = field.substr(1,size);
-        
-        ss << field << " = value;";
-    }
-    else 
-    {
-        ss << (f.type == "void"  || f.type == ""?  "" : ("return null;") );
-    }
-    
+    ss << (f.type == "void"  || f.type == ""?  "" : ("return null;") );
     return ss.str();
 }
 
@@ -384,6 +377,7 @@ void writeFile(JavaClass jc, string name)
 
 }
 
+
 void readfile(string filename)
 {
     string inFileName = filename + ".txt";
@@ -408,23 +402,9 @@ void readfile(string filename)
         //first line is the header
         if (lineCount == 1)
         {
-            
-            //find whitespace
-            if (line.find(" ") == string::npos) 
-            {
-                //not found -> empty or name only
-                //build string "public [className]"
-                string className = line;
-                stringstream ss;
-                ss << "public class " << className;
-                package.header = ss.str();
-            }
-            else 
-            {
-                //found -> probably full declearation
-                package.header = line;
-            }
-            
+            Header header = parseHeader(line);
+            package.header = header;
+
             //finished for the 1st line
             lineCount++;
             continue;
@@ -440,23 +420,6 @@ void readfile(string filename)
             //not found -> field 
             Field f = parseField(line);
             package.fields.push_back(f);
-            
-            //look for get,set
-            size_t bar = line.find('|');
-            if (bar!=string::npos)
-            {
-                if (line.find("get",bar) != string::npos)
-                {
-                    cout << "created getter for ["<< f.name <<"]" << endl;
-                    package.functions.push_back(getter(f));
-                }
-                if (line.find("set",bar) != string::npos);
-                {
-                    cout << "created setter for ["<< f.name <<"]" << endl;
-                    package.functions.push_back(setter(f));
-                }
-            }
-            
         }
         else 
         {
