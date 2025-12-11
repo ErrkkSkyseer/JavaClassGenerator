@@ -1,0 +1,12 @@
+// <<_>>    name
+// [_]      regex
+// //       comment
+// ...      spread
+<<full class declearation>> | <<classname>> 
+
+// field
+// access mofifier
+[+|#|-]<<fieldName>>:<<Type>>|[get?,set?]
+
+//function 
+[+|#|-]<<functionName>>(<<params>>:<<Type>>,...):Type
