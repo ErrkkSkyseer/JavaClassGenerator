@@ -12,6 +12,8 @@ using namespace std;
 
 set<string> HEADERKEYWORDS = {"public","private","protected","abstract","interface","implements","extends","class"};
 string FIELD_PREFIX = "m_";
+set<string> NUMERIC_TYPE = {"short","int","long","long long","float","double"};
+set<string> BOOLEAN_TYPE = {"boolean","bool"};
 
 enum Access
 {
@@ -300,9 +302,17 @@ string paramString(Param p)
 
 string functionBody (Function f)
 {
-    stringstream ss;
-    ss << (f.type == "void"  || f.type == ""?  "" : ("return null;") );
-    return ss.str();
+    string body;
+    if (f.type == "void")
+        body = "";
+    else if(NUMERIC_TYPE.find(f.type) != NUMERIC_TYPE.end())
+        body = "return 0;";
+    else if(NUMERIC_TYPE.find(f.type) != NUMERIC_TYPE.end())
+        body = "return false;";
+    else
+        body = "return null;";
+
+    return body;
 }
 
 string functionString(Function f)
