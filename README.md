@@ -38,9 +38,10 @@ param = \[param_name\]:\[param_type\]
   <li>func_type : function type</li>
 </ul>
 
-note:
+**note**
 <ul>
   <li>All whitespace is remove before parsing.</li>
   <li>For private field, parser will try to add "m_" to field_name if not already.</li>
   <li>Vertical bar ("|") is optional. You don't need it the field doesn't need getter/setter.</li>
+  <li>Function with type that's not void will have defult return value. (0 for numeric, false for boolean, null for otherwise)</li>
 </ul>
