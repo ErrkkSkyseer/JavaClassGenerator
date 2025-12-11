@@ -10,38 +10,39 @@
 
 using namespace std;
 
+set<string> HEADERKEYWORDS = {"public","private","protected","abstract","interface","implements","extends","class"};
+string FIELD_PREFIX = "m_";
+
 enum Access
 {
     public_,protected_,private_
 };
 
-set<string> headerKeywords = 
-{
-    "public","private","protected","abstract","interface","implements","extends"
-};
 
 struct Field
 {
     Access acc;
-    string name;
     string type;
-    bool get = false;
-    bool set = false;
+    string name;
+    bool isGetter = false;
+    bool isSetter = false;
 };
 
 struct Param
 {
-    string name;
     string type;
+    string name;
 };
 
 
 struct Function
 {
     Access acc;
-    string name;
     string type;
+    string name;
     vector<Param> params;
+
+    bool isConstructor = false;
 };
 
 struct Header
@@ -128,12 +129,23 @@ vector<string> slice(string s, char splitter)
     v.push_back(s.substr(commaLast,paramSize));
     return v;
 }
-    
-string removem_(string s)
+
+bool havePrefix(string s)
 {
-    if (s.find("m_") != string::npos)
-        s = s.substr(2,s.size()-2);
+    return s.find(FIELD_PREFIX) == 0;
+}
+
+string removePrefix(string s)
+{
+    size_t prefixSize = FIELD_PREFIX.size();
+    if (s.find(FIELD_PREFIX) != string::npos)
+        s = s.substr(prefixSize,s.size()-prefixSize);
     return s;
+}
+
+string addPrefix(string s)
+{
+    return FIELD_PREFIX + s;
 }
 
 string toPascal(string s)
@@ -172,7 +184,7 @@ Header parseHeader(string line)
         auto tokens = slice(line,' ');
         for (auto t : tokens)
         {
-            if (headerKeywords.find(t) != headerKeywords.end())
+            if (HEADERKEYWORDS.find(t) == HEADERKEYWORDS.end())
             {
                 h.name = t;
                 break;
@@ -185,13 +197,12 @@ Header parseHeader(string line)
     return h;
 }
 
-Field makeField(Access acc, string type, string name)
+Field makeField(Access acc, string type, string name,bool isGet, bool isSet)
 {
-    Field f;
-    f.acc = acc;
-    f.type = type;
-    f.name = name;
-    return {acc,name,type};
+    if (acc == private_ && !havePrefix(name))
+        name = addPrefix(name);
+
+    return {acc,type,name,isGet,isSet};
 }
 
 Field parseField(string line)
@@ -210,18 +221,15 @@ Field parseField(string line)
     string type = line.substr(typeStart,typeSize);
 
     size_t getSetSearchSize = line.size() - bar; 
-    bool haveGet = line.find("get",bar+1);
-    bool haveSet = line.find("set",bar+1);
+    bool haveGet = line.find("get",bar+1) != string::npos;
+    bool haveSet = line.find("set",bar+1) != string::npos;
 
     return makeField(acc,type,name,haveGet,haveSet);
 }
 
 Param makeParam(string type, string name)
 {
-    Param p;
-    p.type = type;
-    p.name = name;
-    return p;
+    return {type,name};
 }
 
 vector<Param> parseParams(string line)
@@ -244,12 +252,7 @@ vector<Param> parseParams(string line)
 
 Function makeFunction(Access acc, string type, string name, vector<Param> params)
 {
-    Function f;
-    f.acc = acc;
-    f.type = type;
-    f.name = name;
-    f.params = params;
-    return f;
+    return {acc,type,name,params,type==""};
 }
 
 Function parseFunction(string line)
@@ -283,15 +286,6 @@ string fieldString(Field f)
     ss << access2String(f.acc) << " " << f.type << " " ;
 
     //private field always start with "m_"
-    if (f.acc == private_)
-    {
-        if (!(f.name[0] == 'm' &&
-            f.name[1] == '_'))
-            {
-                ss << "m_";
-            }
-    }
-
     ss << f.name << ";";
 
     return ss.str();
@@ -328,12 +322,44 @@ string functionString(Function f)
     return ss.str();
 }
 
-void writeFile(JavaClass jc, string name)
+string getterString(Field f)
 {
-    ofstream outfile(name + ".java");
+    string fieldName = f.name;
+    if (havePrefix(fieldName))
+        fieldName = removePrefix(fieldName);
+
+    string getterName = "get" + toPascal(fieldName);
+    Function getter = makeFunction(public_,f.type,getterName,{});
+
+    return functionString(getter);
+}
+
+string setterString(Field f)
+{
+    string fieldName = f.name;
+    if (havePrefix(fieldName))
+        fieldName = removePrefix(fieldName);
+
+    string setterName = "set" + toPascal(fieldName);
+    Function setter = makeFunction(public_,"void",setterName,{{f.type,"value"}});
+
+    string fstring = functionString(setter);
+    string setterBody = f.name + " = value;";
+
+    size_t leftCurryBracket = fstring.find('{');
+    int offset = 4;
+    fstring.insert(leftCurryBracket + offset,setterBody);
+
+    return fstring;
+}
+
+void writeFile(JavaClass jc)
+{
+    string filename = jc.header.name;
+    ofstream outfile(filename + ".java");
     
     //header
-    outfile << jc.header << endl;
+    outfile << jc.header.declearation << endl;
     outfile << "{" << endl;
     
     //field
@@ -358,23 +384,68 @@ void writeFile(JavaClass jc, string name)
 
     for (Field f : publicField)
         outfile << "\t" << fieldString(f) << endl;
-    outfile << endl;
+    if (!publicField.empty()) outfile << endl;
+    
     for (Field f : protectedField)
-        outfile << "\t" << fieldString(f) << endl;
-    outfile << endl;
+    outfile << "\t" << fieldString(f) << endl;
+    if (!protectedField.empty()) outfile << endl;
+
     for (Field f : privateField)
-        outfile << "\t" << fieldString(f) << endl;
-    outfile << endl;
+    outfile << "\t" << fieldString(f) << endl;
+    if (!privateField.empty()) outfile << endl;
 
     //functions
+    vector<Function> constructor;
+    vector<Function> privateFunction;
+    vector<Function> protectedFunction;
+    vector<Function> publicFunction;
     for (Function f : jc.functions)
     {
-        outfile << functionString(f) << "\n\n";
+        if (f.isConstructor)
+        {
+            constructor.push_back(f);
+            continue;
+        }
+
+        switch (f.acc)
+        {
+            case private_:
+                privateFunction.push_back(f);
+                break;
+            case protected_:
+                protectedFunction.push_back(f);
+                break;
+            case public_:
+                publicFunction.push_back(f);
+                break;
+        }
     }
 
+    for (Function f : constructor)
+        outfile << functionString(f) << "\n\n";
+
+        //getter setter
+    for (Field f : jc.fields)
+    {
+        cout << f.name << " " << f.isGetter << "|" << f.isSetter << endl;
+        if (f.isGetter) 
+            outfile << getterString(f) << "\n\n";
+        if (f.isSetter) 
+            outfile << setterString(f)<< "\n\n";
+    }
+
+    for (Function f : privateFunction)
+        outfile << functionString(f) << "\n\n";
+    for (Function f : protectedFunction)
+        outfile << functionString(f) << "\n\n";
+    for (Function f : publicFunction)
+        outfile << functionString(f) << "\n\n";
+
     outfile << "}" << endl;
+
     outfile.close();
 
+    cout << "successfully created [" << filename << ".java] from ["<< filename <<".txt]" << endl;
 }
 
 
@@ -430,8 +501,7 @@ void readfile(string filename)
         lineCount++;
     }
     
-    writeFile(package,filename);
-    cout << "successfully created [" << filename << ".java] from ["<< filename <<".txt]" << endl;
+    writeFile(package);
 }
 
 int main(int argc, char** argv)
