@@ -335,13 +335,20 @@ string functionString(Function f)
 string getterString(Field f)
 {
     string fieldName = f.name;
-    if (havePrefix(fieldName))
-        fieldName = removePrefix(fieldName);
-
-    string getterName = "get" + toPascal(fieldName);
+    string getterName = havePrefix(fieldName)? "get" + removePrefix(fieldName) : "get" + fieldName;
     Function getter = makeFunction(public_,f.type,getterName,{});
+    
+    string getterBody = "return " + fieldName +";";
+    string fstring = functionString(getter);
 
-    return functionString(getter);
+    int offset = 4;
+    size_t leftCurryBracket = fstring.find('{');
+    size_t rightCurryBracket = fstring.find('}');
+    size_t eraseSize = leftCurryBracket - offset - rightCurryBracket - 2;
+    fstring = fstring.erase(leftCurryBracket + offset);
+    fstring = fstring + getterBody + "\n\t}";
+
+    return fstring;
 }
 
 string setterString(Field f)
